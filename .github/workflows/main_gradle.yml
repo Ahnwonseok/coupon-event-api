@@ -1,0 +1,92 @@
+#This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+# This workflow will build a Java project with Gradle and cache/restore any dependencies to improve the workflow execution time
+# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-gradle
+
+name: Main S3 & CodeDeploy CI/CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  issues: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+
+      - name: make application.properties
+        run:  touch ./src/main/resources/application.properties
+        shell: bash
+
+      - name: deliver application.properties
+        run: echo "${{ secrets.PRODUCT_APPLICATION_PROPERTIES }}" > ./src/main/resources/application.properties
+        shell: bash
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Gradle Build 수행
+        # uses: gradle/gradle-build-action@67421db6bd0bf253fb4bd25b31ebb98943c375e1
+        # with:
+        # arguments: build
+        run: ./gradlew clean build --info
+        shell: bash
+
+      # 디렉토리 생성
+      - name: Make Directory
+        run: mkdir -p deploy
+
+      # Jar 파일 복사
+      - name: Copy Jar
+        run: cp ./build/libs/*.jar ./deploy
+
+      # appspec.yml 파일 복사
+      - name: Copy appspec.yml
+        run: cp appspec.yml ./deploy
+
+      # script files 복사
+      - name: Copy script
+        run: cp ./scripts/*.sh ./deploy
+
+      - name: Make zip file
+        run: zip -r ./couponApi.zip ./deploy
+        shell: bash
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.PRODUCT_AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.PRODUCT_AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+
+      - name: Upload to S3
+        run: aws s3 cp --region ap-northeast-2 ./couponApi.zip s3://product-traffic/
+
+
+
+      # Deploy
+      - name: Deploy
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.PRODUCT_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.PRODUCT_AWS_SECRET_ACCESS_KEY }}
+        run: aws deploy create-deployment --application-name coupon_api
+          --deployment-group-name coupon_api_group
+          --file-exists-behavior OVERWRITE
+          --s3-location bucket=product-traffic,bundleType=zip,key=couponApi.zip
+          --region ap-northeast-2
