@@ -30,30 +30,12 @@ jobs:
           java-version: '11'
           distribution: 'temurin'
 
-      - name: make application-productDB.properties
-        run:  touch ./src/main/resources/application-productDB.properties
-        shell: bash
-
-      - name: deliver application-productDB.properties
-        run: echo "${{ secrets.PRODUCT_PROPERTIES }}" > ./src/main/resources/application-productDB.properties
-        shell: bash
-
       - name: make application.properties
         run:  touch ./src/main/resources/application.properties
         shell: bash
 
       - name: deliver application.properties
         run: echo "${{ secrets.PRODUCT_APPLICATION_PROPERTIES }}" > ./src/main/resources/application.properties
-        shell: bash
-
-      - name: test make application.properties
-        run: |
-          mkdir -p ./src/test/resources
-          touch ./src/test/resources/application.properties
-        shell: bash
-
-      - name: test deliver application.properties
-        run: echo "${{ secrets.TEST_PROPERTIES }}" > ./src/test/resources/application.properties
         shell: bash
 
       - name: Grant execute permission for gradlew
@@ -65,29 +47,6 @@ jobs:
         # arguments: build
         run: ./gradlew clean build --info
         shell: bash
-
-      - name: 테스트 결과를 PR에 코멘트로 등록합니다
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        if: always()
-        with:
-          files: '**/build/test-results/test/TEST-*.xml'
-
-      - name: 테스트 실패 시, 실패한 코드 라인에 Check 코멘트를 등록합니다
-        uses: mikepenz/action-junit-report@v3
-        if: always()
-        with:
-          report_paths: '**/build/test-results/test/TEST-*.xml'
-          token: ${{ github.token }}
-
-      - name: build 실패 시 Slack으로 알립니다
-        uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          author_name: 백엔드 빌드 실패 알림
-          fields: repo, message, commit, author, action, eventName, ref, workflow, job, took
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        if: failure()
 
       # 디렉토리 생성
       - name: Make Directory
@@ -101,13 +60,12 @@ jobs:
       - name: Copy appspec.yml
         run: cp appspec.yml ./deploy
 
-
       # script files 복사
       - name: Copy script
         run: cp ./scripts/*.sh ./deploy
 
       - name: Make zip file
-        run: zip -r ./sts_product.zip ./deploy
+        run: zip -r ./couponApi.zip ./deploy
         shell: bash
 
       - name: Configure AWS credentials
@@ -118,7 +76,7 @@ jobs:
           aws-region: ap-northeast-2
 
       - name: Upload to S3
-        run: aws s3 cp --region ap-northeast-2 ./sts_product.zip s3://product-traffic/
+        run: aws s3 cp --region ap-northeast-2 ./couponApi.zip s3://product-traffic/
 
 
 
@@ -127,8 +85,8 @@ jobs:
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.PRODUCT_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.PRODUCT_AWS_SECRET_ACCESS_KEY }}
-        run: aws deploy create-deployment --application-name sts_develop
-          --deployment-group-name sts_product_codedeploy
+        run: aws deploy create-deployment --application-name coupon_api
+          --deployment-group-name coupon_api_group
           --file-exists-behavior OVERWRITE
-          --s3-location bucket=product-traffic,bundleType=zip,key=sts_product.zip
+          --s3-location bucket=product-traffic,bundleType=zip,key=couponApi.zip
           --region ap-northeast-2

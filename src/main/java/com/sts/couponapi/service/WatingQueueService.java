@@ -1,7 +1,7 @@
 package com.sts.couponapi.service;
 
-import com.example.kafkademo.dto.CouponEventDto;
-import com.example.kafkademo.dto.CouponRegisterDto;
+import com.sts.couponapi.dto.CouponEventDto;
+import com.sts.couponapi.dto.CouponRegisterDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
@@ -16,7 +16,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class WatingQueueService {
 
-    private static String TOPIC_NAME = "COUPON_TEST";
+    private static String TOPIC_NAME = "coupon_event";
     private final RedisTemplate<String, String> redisTemplate;
     private final KafkaTemplate<Integer, String> kafkaTemplate;
     private final RedisTemplate<String, Integer> registerCouponTemplate;
