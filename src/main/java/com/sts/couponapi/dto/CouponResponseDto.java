@@ -5,8 +5,8 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class CouponRegisterDto {
+public class CouponResponseDto {
     private String couponType;
-    private String date;
+    private double date;
     private int count;
 }
