@@ -36,7 +36,7 @@ public class EventSchedulingService {
 
         for (Object coupon : coupons) {
             Double score = zSetOps.score("A1001:1", coupon);
-            if (Double.parseDouble(result) >= score) {
+            if (Double.parseDouble(result) >= score + 15) {
                 FinishEvent event = new FinishEvent();
                 event.setCouponType("A1001");
                 event.setDate(score);
