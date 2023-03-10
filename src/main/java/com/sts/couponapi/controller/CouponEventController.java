@@ -42,7 +42,7 @@ public class CouponEventController {
 
     @GetMapping("/main")
     public String main() {
-        return "선착순 1차 적용 완료!";
+        return "스케쥴링 수정!";
     }
 
 }
