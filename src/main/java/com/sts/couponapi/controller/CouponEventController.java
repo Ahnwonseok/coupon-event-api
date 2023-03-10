@@ -23,8 +23,8 @@ public class CouponEventController {
 
     @PostMapping("/coupon")
     public ResponseEntity<?> coupon(@RequestBody CouponRegisterDto dto) {
-        watingQueueService.setCoupon(dto);
-        return new ResponseEntity<>("success coupon register", HttpStatus.CREATED);
+        String data = watingQueueService.setCoupon(dto);
+        return new ResponseEntity<>(data, HttpStatus.CREATED);
     }
 
     @GetMapping("/main")
