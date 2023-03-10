@@ -30,4 +30,4 @@ chmod +x $JAR_NAME
 
 echo "> $JAR_NAME 실행"
 
-nohup java -jar -javaagent:$PINPOINT/pinpoint-bootstrap-2.2.3-NCP-RC1.jar -Dpinpoint.applicationName=sts_product -Dpinpoint.agentId=admin -Duser.timezone=Asia/Seoul $JAR_NAME >> $REPOSITORY/nohup.out 2>&1 &
+nohup java -jar -Duser.timezone=Asia/Seoul $JAR_NAME >> $REPOSITORY/nohup.out 2>&1 &
