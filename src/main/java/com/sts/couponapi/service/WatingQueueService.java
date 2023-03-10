@@ -22,43 +22,41 @@ import java.util.Set;
 public class WatingQueueService {
 
     private static String TOPIC_NAME = "coupon_event";
-    private final RedisTemplate<String, String> redisTemplate;
-    private final KafkaTemplate<Integer, String> kafkaTemplate;
+    private final RedisTemplate<String, Integer> redisTemplate;
+    private final KafkaTemplate<Integer, Integer> kafkaTemplate;
     private final RedisTemplate<String, Object> registerCouponTemplate;
     private final FinishEventRepository finishEventRepository;
 
     @Transactional
     public Boolean setQueue(CouponEventDto dto) {
-        //ValueOperations<String, Integer> couponCount = registerCouponTemplate.opsForValue();
-        //if (couponCount.get(dto.getCouponType()).equals(0))
-            //return false;
-        String key = dto.getCouponType().split(":")[0];
-        String value = dto.getUsername();
-        ZSetOperations<String, String> waitingQueue = redisTemplate.opsForZSet();
-        if (waitingQueue.zCard(key) != 0 && waitingQueue.rank(key, value) != null) {
+        ZSetOperations<String, Object> zSetOps = registerCouponTemplate.opsForZSet();
+        Set<Object> members = zSetOps.range("A1001:1", 0, -1);
+        ZSetOperations<String, Integer> waitingQueue = redisTemplate.opsForZSet();
+        try {
+            for (Object member : members) {
+                Double tmpScore = zSetOps.score("A1001:1", member);
+                String key = "A1001";
+                int count = member.hashCode();
+                Double score = tmpScore;
+                if (count != 0) {
+                    waitingQueue.add(key, count, score);
+                    Set<Integer> datas = waitingQueue.range(key, 0, -1);
+                    for (Integer data : datas) {
+                        kafkaTemplate.send(TOPIC_NAME, data);
+                        registerCouponTemplate.opsForValue().increment(dto.getCouponType(), -1);
+                        datas.clear();
+                    }
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        } catch (Exception e) {
             return false;
         }
-        waitingQueue.add(key, value, (double)System.currentTimeMillis());
-        if (waitingQueue.zCard(key) >= 100) {
-            Set<String> datas = waitingQueue.range(key, 0, -1);
-            for (String data : datas) {
-                kafkaTemplate.send(TOPIC_NAME, data);
-                registerCouponTemplate.opsForValue().increment(dto.getCouponType(), -1);
-            }
-            waitingQueue.removeRange(key, 0, -1);
-        }
-        return true;
+        return false;
     }
 
-    @Transactional
-    public boolean testQueue(CouponEventDto dto) {
-        String key = dto.getCouponType().toString();
-        String value = dto.getUsername().toString();
-        double score = 1;
-        ZSetOperations<String, String> waitingQueue = redisTemplate.opsForZSet();
-        waitingQueue.add(key, value, score);
-        return true;
-    }
 
     @Transactional
     public String setCoupon(CouponRegisterDto dto) {
