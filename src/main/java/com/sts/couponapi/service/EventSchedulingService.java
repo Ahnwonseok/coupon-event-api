@@ -16,13 +16,13 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class EventSchedulingService {
 
-    private final RedisTemplate<String, Object> registerCouponTemplate;
+    private final RedisTemplate<String, Double> registerCouponTemplate;
     private final FinishEventRepository finishEventRepository;
 
     @Scheduled(fixedDelay = 1000) //1초마다 실행
     public void moveToMySQL() {
-        ZSetOperations<String, Object> zSetOps = registerCouponTemplate.opsForZSet();
-        Set<Object> coupons = zSetOps.range("A1001:1", 0, -1);
+        ZSetOperations<String, Double> zSetOps = registerCouponTemplate.opsForZSet();
+        Set<Double> coupons = zSetOps.range("A1001:1", 0, -1);
         LocalDateTime now = LocalDateTime.now();
 
         // 년/월/일/시/분을 2자리 문자열로 표시
@@ -34,13 +34,21 @@ public class EventSchedulingService {
 
         String result = year + month + day + hour + minute;
 
-        for (Object coupon : coupons) {
+        for (Double coupon : coupons) {
             Double score = zSetOps.score("A1001:1", coupon);
-            if (Double.parseDouble(result) >= score + 15 || coupon.hashCode() == 0) {
+            String strScore = Double.toString(coupon);
+            String subStr = strScore.substring(0, strScore.length() - 2);
+            double subStr2 = Double.parseDouble(subStr);
+            double tmpScore = coupon;
+            if (subStr2 + 15 >= 60)
+                tmpScore += 55;
+            else
+                tmpScore += 15;
+            if (Double.parseDouble(result) >= tmpScore || score <= 0) {
                 FinishEvent event = new FinishEvent();
                 event.setCouponType("A1001");
-                event.setDate(score);
-                event.setCount(coupon.hashCode());
+                event.setDate(coupon);
+                event.setCount(score);
                 finishEventRepository.save(event);
                 zSetOps.remove("A1001:1", coupon);
             }

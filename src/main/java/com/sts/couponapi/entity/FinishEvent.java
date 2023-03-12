@@ -25,5 +25,5 @@ public class FinishEvent {
     private Double date;
 
     @Column(name = "count")
-    private int count;
+    private Double count;
 }
