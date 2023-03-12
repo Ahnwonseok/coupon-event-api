@@ -37,7 +37,7 @@ public class EventSchedulingService {
         for (Double coupon : coupons) {
             Double score = zSetOps.score("A1001:1", coupon);
             String strScore = Double.toString(coupon);
-            String subStr = strScore.substring(0, strScore.length() - 2);
+            String subStr = strScore.substring(strScore.length() - 2);
             double subStr2 = Double.parseDouble(subStr);
             double tmpScore = coupon;
             if (subStr2 + 15 >= 60)
