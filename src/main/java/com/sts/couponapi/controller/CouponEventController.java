@@ -3,10 +3,12 @@ package com.sts.couponapi.controller;
 import com.sts.couponapi.dto.CouponEventDto;
 import com.sts.couponapi.dto.CouponRegisterDto;
 import com.sts.couponapi.dto.CouponResponseDto;
+import com.sts.couponapi.security.UserDetailsImpl;
 import com.sts.couponapi.service.WatingQueueService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,8 +22,8 @@ public class CouponEventController {
     private final WatingQueueService watingQueueService;
 
     @PostMapping("/queue")
-    public Boolean queue(@RequestBody CouponEventDto dto) {
-        return watingQueueService.setQueue(dto);
+    public String queue(@RequestBody CouponRegisterDto dto, @AuthenticationPrincipal UserDetailsImpl userDetails) {
+        return watingQueueService.setQueue(dto, userDetails.getMember());
     }
 
     @PostMapping("/coupon")

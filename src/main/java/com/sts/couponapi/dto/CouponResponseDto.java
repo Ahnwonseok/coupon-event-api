@@ -7,6 +7,6 @@ import lombok.Setter;
 @Setter
 public class CouponResponseDto {
     private String couponType;
-    private double date;
-    private int count;
+    private Double date;
+    private Double count;
 }
