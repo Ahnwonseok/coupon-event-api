@@ -114,7 +114,7 @@ public class WebSecurityConfig {
         UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
 
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(Collections.singletonList("*"));
+        config.setAllowedOrigins(permitOrigin);
         config.addAllowedMethod("*");
 
         config.addAllowedHeader("Authorization");
