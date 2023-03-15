@@ -18,6 +18,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Collections;
 import java.util.List;
 
 
@@ -113,7 +114,7 @@ public class WebSecurityConfig {
         UrlBasedCorsConfigurationSource corsConfigurationSource = new UrlBasedCorsConfigurationSource();
 
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(permitOrigin);
+        config.setAllowedOrigins(Collections.singletonList("*"));
         config.addAllowedMethod("*");
 
         config.addAllowedHeader("Authorization");
