@@ -26,11 +26,9 @@ import java.util.List;
 @EnableWebSecurity // 스프링 Security 지원을 가능하게 함
 public class WebSecurityConfig {
 
-    /*private static final List<String> permitOrigin =
-            List.of("http://localhost:3000","http://localhost:8080","http://sts-system.vercel.app","http://sts-system-front-product.vercel.app"
-            ,"https://sts-system.vercel.app", "https://sts-system-front-product.vercel.app", "*");*/
     private static final List<String> permitOrigin =
-            List.of("*");
+            List.of("http://localhost:3000","http://localhost:8080","http://sts-system.vercel.app","http://sts-system-front-product.vercel.app"
+            ,"https://sts-system.vercel.app", "https://sts-system-front-product.vercel.app");
 
     /**
      * BCrypt로 패스워드 인코딩 수행<br>
