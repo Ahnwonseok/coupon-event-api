@@ -7,7 +7,9 @@ import com.sts.couponapi.entity.FinishEvent;
 import com.sts.couponapi.members.entity.Members;
 import com.sts.couponapi.repository.FinishEventRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.kafka.core.KafkaTemplate;
@@ -15,80 +17,55 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import redis.embedded.Redis;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WatingQueueService {
 
-    private static String TOPIC_NAME = "coupon_event";
-    private static String USER_QUEUE_PREFIX = "WINNER_";
-    private final KafkaTemplate<Integer, Integer> kafkaTemplate;
-    private final RedisTemplate<String, Double> registerCouponTemplate;
+    private final RedisTemplate<String, Long> registerCouponTemplate;
     private final FinishEventRepository finishEventRepository;
     private final RedisTemplate<String,String> userQueue;
 
-    /*
+    //이벤트 참여하기
     @Transactional
-    public Boolean setQueue(CouponEventDto dto) {
-        ZSetOperations<String, Object> zSetOps = registerCouponTemplate.opsForZSet();
-        Set<Object> members = zSetOps.range("A1001:1", 0, -1);
-        ZSetOperations<String, Integer> waitingQueue = redisTemplate.opsForZSet();
-        try {
-            for (Object member : members) {
-                Double tmpScore = zSetOps.score("A1001:1", member);
-                String key = "A1001";
-                int count = member.hashCode();
-                Double score = tmpScore;
-                if (count != 0) {
-                    waitingQueue.add(key, count, score);
-                    Set<Integer> datas = waitingQueue.range(key, 0, -1);
-                    for (Integer data : datas) {
-                        kafkaTemplate.send(TOPIC_NAME, data);
-                        registerCouponTemplate.opsForValue().increment(dto.getCouponType(), -1);
-                        datas.clear();
-                    }
-                    return true;
-                } else {
-                    return false;
-                }
-            }
-        } catch (Exception e) {
-            return false;
-        }
-        return false;
-    }*/
-
-    @Transactional
-    public String setQueue(CouponRegisterDto dto, Members members) {
+    public void setQueue(Members members) {
         String userName = members.getUsername();
+        //당첨 유저의 sorted set
         ZSetOperations<String, String> queue = userQueue.opsForZSet();
-        boolean memberExists = userQueue.hasKey(USER_QUEUE_PREFIX +userName);
+        Boolean memberExists = userQueue.hasKey(userName);
+
         if (memberExists)
-            return "이미 참여하셨습니다.";
-        else {
-            ZSetOperations<String, Double> coupons = registerCouponTemplate.opsForZSet();
-            Set<Double> couponList = coupons.range("A1001:1", 0, -1);
-            for (Double coupon : couponList) {
-                if (coupons.score("A1001:1",coupon) > 0) {
-                    Double newScore = coupons.incrementScore("A1001:1", coupon, -1);
-                    String winnerKey = USER_QUEUE_PREFIX + members.getUsername();
-                    String winnerValue = "A1001:1";
-                    queue.add(winnerKey,winnerValue,coupon);
-                    return "당첨! 마이페이지를 확인해주세요";
-                } else {
-                    return "선착순 마감되었습니다.";
-                }
+            log.info("이미 이벤트에 참여했습니다.");
+
+        ZSetOperations<String, Long> coupons = registerCouponTemplate.opsForZSet();
+        Double couponNum = coupons.score("A1001",Long.parseLong("2305211618"));
+
+        //쿠폰 갯수가 다 떨어질 경우
+        if (couponNum == 0)
+            log.info ("선착순 이벤트가 종료되었습니다.");
+
+        Set<Long> couponList = coupons.range("A1001", 0, -1);
+        for (Long coupon : couponList) {
+            if (coupons.score("A1001",coupon) > 0) {
+                //당첨자 sorted set에서 따로 저장
+                queue.add("WINNER", userName, System.currentTimeMillis());
+
+                //당첨자가 나올 경우 쿠폰개수 하나씩 감소
+                coupons.incrementScore("A1001",coupon,-1);
+                log.info ("당첨! 마이페이지를 확인해주세요");
             }
         }
-        return "선착순 마감되었습니다.";
     }
 
+    //쿠폰 만들기
     @Transactional
     public String setCoupon(CouponRegisterDto dto) {
-        ZSetOperations<String, Double> zSetOps = registerCouponTemplate.opsForZSet();
+        ZSetOperations<String, Long> zSetOps = registerCouponTemplate.opsForZSet();
         boolean exists = registerCouponTemplate.hasKey(dto.getCouponType());
         if (exists) {
             return "이미 존재하는 쿠폰타입 입니다.";
@@ -103,14 +80,14 @@ public class WatingQueueService {
 
     @Transactional
     public List<CouponResponseDto> getCoupon() {
-        ZSetOperations<String, Double> zSetOps = registerCouponTemplate.opsForZSet();
-        Set<Double> members = zSetOps.range("A1001:1", 0, -1);
+        ZSetOperations<String, Long> zSetOps = registerCouponTemplate.opsForZSet();
+        Set<Long> members = zSetOps.range("A1001", 0, -1);
         List<CouponResponseDto> couponList = new ArrayList<>();
-        for (Double member: members) {
+        for (Long member: members) {
             CouponResponseDto couponDto = new CouponResponseDto();
-            Double score = zSetOps.score("A1001:1", member);
+            double score = zSetOps.score("A1001", member);
             couponDto.setCouponType("A1001");
-            couponDto.setCount(score);
+            couponDto.setCount((long)score);
             couponDto.setDate(member);
             couponList.add(couponDto);
         }

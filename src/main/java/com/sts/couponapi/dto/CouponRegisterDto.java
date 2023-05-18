@@ -7,6 +7,6 @@ import lombok.Setter;
 @Setter
 public class CouponRegisterDto {
     private String couponType;
-    private double date;
+    private Long date; //ex) 2305171650
     private int count;
 }

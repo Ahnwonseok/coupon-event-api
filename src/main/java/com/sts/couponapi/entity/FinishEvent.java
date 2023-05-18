@@ -22,8 +22,8 @@ public class FinishEvent {
     private String couponType;
 
     @Column(name = "date")
-    private Double date;
+    private Long date;
 
     @Column(name = "count")
-    private Double count;
+    private Long count;
 }

@@ -21,9 +21,10 @@ import java.util.List;
 public class CouponEventController {
     private final WatingQueueService watingQueueService;
 
+    //쿠폰 신청하기
     @PostMapping("/queue")
-    public String queue(@RequestBody CouponRegisterDto dto, @AuthenticationPrincipal UserDetailsImpl userDetails) {
-        return watingQueueService.setQueue(dto, userDetails.getMember());
+    public void queue(@AuthenticationPrincipal UserDetailsImpl userDetails) {
+        watingQueueService.setQueue(userDetails.getMember());
     }
 
     @PostMapping("/coupon")

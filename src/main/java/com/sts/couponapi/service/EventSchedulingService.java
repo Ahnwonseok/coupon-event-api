@@ -4,6 +4,7 @@ import com.sts.couponapi.dto.CouponResponseDto;
 import com.sts.couponapi.entity.FinishEvent;
 import com.sts.couponapi.repository.FinishEventRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -12,17 +13,20 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EventSchedulingService {
 
-    private final RedisTemplate<String, Double> registerCouponTemplate;
+    private final RedisTemplate<String, Long> registerCouponTemplate;
     private final FinishEventRepository finishEventRepository;
-
+    private static String EVENT_NAME = "A1001";
+    
     @Scheduled(fixedDelay = 1000) //1초마다 실행
     public void moveToMySQL() {
-        ZSetOperations<String, Double> zSetOps = registerCouponTemplate.opsForZSet();
-        Set<Double> coupons = zSetOps.range("A1001:1", 0, -1);
+        //쿠폰의 sorted set
+        ZSetOperations<String, Long> zSetOps = registerCouponTemplate.opsForZSet();
+        Set<Long> coupons = zSetOps.range(EVENT_NAME, 0, -1);
         LocalDateTime now = LocalDateTime.now();
 
         // 년/월/일/시/분을 2자리 문자열로 표시
@@ -32,27 +36,32 @@ public class EventSchedulingService {
         String hour = String.format("%02d", now.getHour());
         String minute = String.format("%02d", now.getMinute());
 
-        String result = year + month + day + hour + minute;
+        //현재 시각 (2305171650)
+        String nowTime = year + month + day + hour + minute;
 
-        for (Double coupon : coupons) {
-            Double score = zSetOps.score("A1001:1", coupon);
-            long tmpLong = coupon.longValue();
-            String strScore = String.valueOf(tmpLong);
-            String subStr = strScore.substring(strScore.length() - 2);
-            double subStr2 = Double.parseDouble(subStr);
-            long tmpScore = tmpLong;
-            if (subStr2 + 15 >= 60)
-                tmpScore += 55;
-            else
-                tmpScore += 15;
-            if (Double.parseDouble(result) >= tmpScore || score <= 0) {
+        for (Long coupon : coupons) {
+
+            //해당 쿠폰의 개수(score)
+            double couponNum = zSetOps.score(EVENT_NAME, coupon);
+
+            //선착순 이벤트 종료시간(2305171650)
+            long endTime = coupon.longValue();
+
+            //만약 이벤트 종료시간이 된다면
+            if (Long.parseLong(nowTime) >= endTime) {
+                //종료된 이벤트를 저장
                 FinishEvent event = new FinishEvent();
-                event.setCouponType("A1001");
+                event.setCouponType(EVENT_NAME);
                 event.setDate(coupon);
-                event.setCount(score);
+                event.setCount((long)couponNum);
                 finishEventRepository.save(event);
-                zSetOps.remove("A1001:1", coupon);
+
+                //종료된 쿠폰을 삭제
+                zSetOps.remove(EVENT_NAME, coupon);
+                //이벤트 종료
+                return;
             }
+
         }
     }
 }
